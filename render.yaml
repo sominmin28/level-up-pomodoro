@@ -1,0 +1,32 @@
+{
+  "version": "2",
+  "name": "level-up-pomodoro",
+  "services": [
+    {
+      "name": "backend",
+      "type": "web",
+      "env": "node",
+      "buildCommand": "cd backend && npm install",
+      "startCommand": "cd backend && node server.js",
+      "envVars": [
+        { "key": "PORT", "value": "3001" },
+        { "key": "JWT_SECRET", "generateValue": true },
+        { "key": "DB_SERVER", "sync": false },
+        { "key": "DB_NAME", "sync": false },
+        { "key": "DB_USER", "sync": false },
+        { "key": "DB_PASSWORD", "sync": false },
+        { "key": "OPENAI_API_KEY", "sync": false }
+      ]
+    },
+    {
+      "name": "frontend",
+      "type": "web",
+      "env": "static",
+      "buildCommand": "cd frontend && npm install && npm run build",
+      "staticPublishPath": "frontend/dist",
+      "envVars": [
+        { "key": "VITE_API_URL", "value": "https://level-up-pomodoro-backend.onrender.com/api" }
+      ]
+    }
+  ]
+}
