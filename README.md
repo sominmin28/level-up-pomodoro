@@ -133,11 +133,11 @@ origin 뒤에는 `/`를 붙이지 않습니다. App Service의 `PORT`는 Azure�
 
 | 종류 | 이름 | 값/획득 위치 |
 |---|---|---|
-| Secret | `AZUREAPPSERVICE_CLIENTID_E180C343D0F943E18C3F7449A4BCDD9C` | Azure App Service Deployment Center가 만든 OIDC 앱의 client ID |
-| Secret | `AZUREAPPSERVICE_TENANTID_526CEFF2F3FB46EBAB337AB48484E73C` | Azure tenant ID |
-| Secret | `AZUREAPPSERVICE_SUBSCRIPTIONID_42A1C38CF75842E98ED3DCA01CE6C87F` | Azure subscription ID |
+| Secret | `AZUREAPPSERVICE_CLIENTID_B230551ED4DB41E8B5C3E53DBB6847BD` | `level-up-pomodoro2` Deployment Center가 만든 OIDC 앱의 client ID |
+| Secret | `AZUREAPPSERVICE_TENANTID_FF18CC771C214DFE9C93A23E90C73616` | Azure tenant ID |
+| Secret | `AZUREAPPSERVICE_SUBSCRIPTIONID_FC7A2BA01ED14DD59FC3916B75EE426F` | Azure subscription ID |
 | Secret | `AZURE_STATIC_WEB_APPS_API_TOKEN` | Static Web App **Manage deployment token** |
-| Variable | `VITE_API_URL` | `https://<app-name>.azurewebsites.net/api` |
+| Variable | `VITE_API_URL` | `https://level-up-pomodoro2.azurewebsites.net/api` |
 
 App Service용 OIDC secret 3개는 Azure Portal의 App Service **Deployment Center**에서
 GitHub Actions를 연결할 때 생성됩니다. federated credential의 subject는 이 저장소의
