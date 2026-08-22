@@ -10,10 +10,78 @@ const usersRoutes = require('./src/routes/users');
 const aiRoutes = require('./src/routes/ai');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const isProduction = process.env.NODE_ENV === 'production';
+const PORT = Number(process.env.PORT || 3001);
 
-app.use(cors());
-app.use(express.json());
+function validateEnvironment() {
+  const errors = [];
+  const jwtSecret = process.env.JWT_SECRET;
+  const databaseVariables = ['DB_SERVER', 'DB_NAME', 'DB_USER', 'DB_PASSWORD'];
+  const configuredDatabaseVariables = databaseVariables.filter((name) => process.env[name]);
+
+  if (!jwtSecret) {
+    errors.push('JWT_SECRET is required');
+  } else if (
+    jwtSecret === 'secret'
+    || jwtSecret === 'replace_with_at_least_32_random_characters'
+  ) {
+    errors.push('JWT_SECRET must not use a default or example value');
+  } else if (isProduction && jwtSecret.length < 32) {
+    errors.push('JWT_SECRET must be at least 32 characters in production');
+  }
+
+  if (isProduction && !process.env.CORS_ORIGINS) {
+    errors.push('CORS_ORIGINS is required in production');
+  }
+
+  if (isProduction || configuredDatabaseVariables.length > 0) {
+    for (const name of databaseVariables) {
+      if (!process.env[name]) errors.push(`${name} is required when using the database`);
+    }
+  }
+
+  if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
+    errors.push('PORT must be a valid TCP port');
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Invalid environment configuration:\n- ${errors.join('\n- ')}`);
+  }
+}
+
+function getTrustProxy() {
+  if (process.env.TRUST_PROXY === undefined) return isProduction ? 1 : false;
+  if (process.env.TRUST_PROXY === 'true') return true;
+  if (process.env.TRUST_PROXY === 'false') return false;
+
+  const hops = Number(process.env.TRUST_PROXY);
+  if (!Number.isInteger(hops) || hops < 0) {
+    throw new Error('TRUST_PROXY must be true, false, or a non-negative integer');
+  }
+  return hops;
+}
+
+const localOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
+const allowedOrigins = (process.env.CORS_ORIGINS || localOrigins.join(','))
+  .split(',')
+  .map((origin) => origin.trim().replace(/\/$/, ''))
+  .filter(Boolean);
+
+app.set('trust proxy', getTrustProxy());
+app.disable('x-powered-by');
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ''))) {
+      return callback(null, true);
+    }
+    const error = new Error('Origin is not allowed by CORS');
+    error.status = 403;
+    return callback(error);
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+app.use(express.json({ limit: '1mb' }));
 
 // Rate limiting
 const authLimiter = rateLimit({
@@ -42,14 +110,24 @@ app.use('/api/ai', aiLimiter, aiRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  console.error(err);
+  res.status(err.status || 500).json({
+    error: err.status ? err.message : 'Server error',
+  });
+});
+
 async function start() {
   try {
+    validateEnvironment();
+
     // Only init DB if connection settings are provided
     if (process.env.DB_SERVER) {
       const { initDB } = require('./src/db/database');
       await initDB();
     } else {
-      console.log('DB_SERVER not set — running without database');
+      console.log('DB_SERVER not set - running without database');
     }
 
     app.listen(PORT, () => {

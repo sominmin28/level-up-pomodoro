@@ -6,6 +6,10 @@
         <span class="level-text">레벨 {{ auth.user?.level || 1 }}</span>
         <span class="xp-text">{{ auth.user?.xp || 0 }} / 100 XP</span>
       </div>
+
+      <p v-if="timerNotice" class="timer-notice" :class="{ error: timerNoticeIsError }">
+        {{ timerNotice }}
+      </p>
       <div class="xp-bar">
         <div class="xp-fill" :style="{ width: (auth.user?.xp || 0) + '%' }"></div>
       </div>
@@ -99,12 +103,10 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useTimerStore } from '../stores/timer'
 import { useAuthStore } from '../stores/auth'
-import axios from 'axios'
+import api from '../services/api'
 
 const timer = useTimerStore()
 const auth = useAuthStore()
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 
 const showLevelUp = ref(false)
 const showComplete = ref(false)
@@ -113,6 +115,8 @@ const aiMessage = ref('')
 const lastXpEarned = ref(25)
 const noiseEnabled = ref(false)
 const selectedNoise = ref('rain')
+const timerNotice = ref('')
+const timerNoticeIsError = ref(false)
 
 const noiseOptions = [
   { id: 'rain', name: '빗소리', icon: '🌧' },
@@ -181,14 +185,24 @@ function handleSkip() {
 // Register timer completion callback
 timer.onTimerEnd_register(async (result) => {
   stopNoise()
+  timerNotice.value = ''
+  if (result?.save_failed) {
+    timerNoticeIsError.value = true
+    timerNotice.value = result.error
+    return
+  }
   if (result) {
+    if (result.saved_locally) {
+      timerNoticeIsError.value = false
+      timerNotice.value = '오프라인 개발 모드: 완료 기록과 XP가 이 기기에만 저장되었습니다.'
+    }
     lastXpEarned.value = result.xp_earned || 25
     if (result.leveled_up) {
       newLevel.value = result.new_level
       showLevelUp.value = true
       aiMessage.value = ''
       try {
-        const res = await axios.post(API_BASE + '/ai/levelup-message', {
+        const res = await api.post('/ai/levelup-message', {
           level: result.new_level,
           total_pomodoros: auth.user?.total_pomodoros,
         })

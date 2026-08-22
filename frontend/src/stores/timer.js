@@ -1,9 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
 import { useAuthStore } from './auth'
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+import api, { getApiErrorMessage, offlineMode } from '../services/api'
 
 export const useTimerStore = defineStore('timer', () => {
   const auth = useAuthStore()
@@ -79,23 +77,40 @@ export const useTimerStore = defineStore('timer', () => {
 
       let result = null
       try {
-        const res = await axios.post(API_BASE + '/pomodoro/complete', {
+        const res = await api.post('/pomodoro/complete', {
           started_at: sessionStartedAt.value,
           completed_at: completedAt,
           duration_minutes: duration,
         })
         result = res.data
-        auth.updateUser({ xp: res.data.new_xp, level: res.data.new_level })
+        auth.updateUser({
+          xp: res.data.new_xp,
+          level: res.data.new_level,
+          total_pomodoros: res.data.total_pomodoros,
+        })
       } catch (e) {
-        // offline fallback: update locally
-        const user = auth.user
-        if (user) {
+        if (offlineMode && auth.user) {
+          const user = auth.user
           let newXp = (user.xp || 0) + 25
           let newLevel = user.level || 1
           let leveledUp = false
           while (newXp >= 100) { newXp -= 100; newLevel++; leveledUp = true }
-          auth.updateUser({ xp: newXp, level: newLevel })
-          result = { new_xp: newXp, new_level: newLevel, leveled_up: leveledUp, xp_earned: 25 }
+          const totalPomodoros = (user.total_pomodoros || 0) + 1
+          auth.updateUser({ xp: newXp, level: newLevel, total_pomodoros: totalPomodoros })
+          result = {
+            new_xp: newXp,
+            new_level: newLevel,
+            leveled_up: leveledUp,
+            xp_earned: 25,
+            total_pomodoros: totalPomodoros,
+            saved_locally: true,
+          }
+        } else {
+          console.error('Failed to save completed pomodoro', e)
+          result = {
+            save_failed: true,
+            error: getApiErrorMessage(e, '완료 기록을 서버에 저장하지 못했습니다. 네트워크 상태를 확인해 주세요.'),
+          }
         }
       }
 

@@ -98,11 +98,10 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
+import api from '../services/api'
 
 const auth = useAuthStore()
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 
 const friends = ref([])
 const searchEmail = ref('')
@@ -117,14 +116,14 @@ const acceptedFriends = computed(() => friends.value.filter(f => f.status === 'a
 
 async function fetchFriends() {
   try {
-    const res = await axios.get(API_BASE + '/friends')
+    const res = await api.get('/friends')
     friends.value = res.data
   } catch (e) { /* offline */ }
 }
 
 async function fetchMyWeekly() {
   try {
-    const res = await axios.get(API_BASE + '/pomodoro/stats')
+    const res = await api.get('/pomodoro/stats')
     myWeekly.value = res.data.week?.pomodoros || 0
   } catch (e) {}
 }
@@ -134,7 +133,7 @@ async function sendRequest() {
   sending.value = true
   addMsg.value = ''
   try {
-    await axios.post(API_BASE + '/friends/request', { email: searchEmail.value })
+    await api.post('/friends/request', { email: searchEmail.value })
     addSuccess.value = true
     addMsg.value = '친구 요청을 보냈습니다!'
     searchEmail.value = ''
@@ -149,21 +148,21 @@ async function sendRequest() {
 
 async function acceptFriend(f) {
   try {
-    await axios.put(API_BASE + '/friends/' + f.id + '/accept')
+    await api.put('/friends/' + f.id + '/accept')
     await fetchFriends()
   } catch (e) {}
 }
 
 async function rejectFriend(f) {
   try {
-    await axios.put(API_BASE + '/friends/' + f.id + '/reject')
+    await api.put('/friends/' + f.id + '/reject')
     friends.value = friends.value.filter(fr => fr.id !== f.id)
   } catch (e) {}
 }
 
 async function removeFriend(f) {
   try {
-    await axios.delete(API_BASE + '/friends/' + f.id)
+    await api.delete('/friends/' + f.id)
     friends.value = friends.value.filter(fr => fr.id !== f.id)
   } catch (e) {}
 }

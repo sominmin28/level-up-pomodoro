@@ -34,7 +34,7 @@ router.post('/register', async (req, res) => {
       .query(`INSERT INTO users (id, nickname, email, password_hash)
               VALUES (@id, @nickname, @email, @password_hash)`);
 
-    const token = jwt.sign({ id, email, nickname }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
+    const token = jwt.sign({ id, email, nickname }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ token, user: { id, nickname, email, level: 1, xp: 0 } });
   } catch (err) {
     console.error(err);
@@ -63,7 +63,7 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign(
       { id: user.id, email: user.email, nickname: user.nickname },
-      process.env.JWT_SECRET || 'secret',
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 

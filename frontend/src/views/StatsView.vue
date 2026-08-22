@@ -83,11 +83,10 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
+import api from '../services/api'
 
 const auth = useAuthStore()
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 
 const stats = ref({ today: {}, week: {}, best_streak: 0, hourly: [], daily: [] })
 const loading = ref(true)
@@ -134,7 +133,7 @@ function formatMinutes(minutes) {
 
 async function fetchStats() {
   try {
-    const res = await axios.get(API_BASE + '/pomodoro/stats')
+    const res = await api.get('/pomodoro/stats')
     stats.value = res.data
   } catch (e) {
     console.error(e)
@@ -146,7 +145,7 @@ async function fetchStats() {
 async function getAIAnalysis() {
   analysisLoading.value = true
   try {
-    const res = await axios.post(API_BASE + '/ai/stats-analysis', {
+    const res = await api.post('/ai/stats-analysis', {
       stats: { ...stats.value, peak_hour: peakHour.value }
     })
     aiAnalysis.value = res.data.analysis

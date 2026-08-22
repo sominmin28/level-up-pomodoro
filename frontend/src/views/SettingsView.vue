@@ -48,11 +48,10 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
+import api, { getApiErrorMessage, offlineMode } from '../services/api'
 
 const auth = useAuthStore()
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 
 const settings = ref({
   focus_duration: auth.user?.focus_duration || 25,
@@ -83,17 +82,21 @@ async function saveSettings() {
   saving.value = true
   saveMsg.value = ''
   try {
-    await axios.put(API_BASE + '/users/settings', settings.value)
+    await api.put('/users/settings', settings.value)
     auth.updateUser(settings.value)
     persistLocal()
     saveSuccess.value = true
     saveMsg.value = '설정이 저장되었습니다!'
   } catch (e) {
-    // Offline: save to localStorage
-    auth.updateUser(settings.value)
-    persistLocal()
-    saveSuccess.value = true
-    saveMsg.value = '로컬에 저장되었습니다'
+    if (offlineMode) {
+      auth.updateUser(settings.value)
+      persistLocal()
+      saveSuccess.value = true
+      saveMsg.value = '오프라인 개발 모드: 이 기기에만 저장되었습니다'
+    } else {
+      saveSuccess.value = false
+      saveMsg.value = getApiErrorMessage(e, '설정을 서버에 저장하지 못했습니다')
+    }
   } finally {
     saving.value = false
     setTimeout(() => { saveMsg.value = '' }, 3000)
